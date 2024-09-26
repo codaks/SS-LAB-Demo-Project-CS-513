@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include "./lib/employee.h"
 #define SERVER_PORT 8088
 #define MAX_CONNECTIONS 100
 
@@ -51,7 +52,7 @@ void load_admin_db() {
   char line[1024];
   while (fgets(line, sizeof(line), fp) != NULL) {
     admin_t admin;
-    sscanf(line, "%d %d %s %s %d\n", &admin.id, &admin.type, admin.username,
+    sscanf(line, "%d %d %s %s %d\n", &admin.id, (int *)&admin.type, admin.username,
            admin.password, &admin.active);
     admin_db[admin.id] = admin;
   }
@@ -67,7 +68,7 @@ void load_employee_db() {
   char line[1024];
   while (fgets(line, sizeof(line), fp) != NULL) {
     employee_t employee;
-    sscanf(line, "%d %d %s %s %d\n", &employee.id, &employee.type,
+    sscanf(line, "%d %d %s %s %d\n", &employee.id, (int *)&employee.type,
            employee.username, employee.password, &employee.active);
     employee_db[employee.id] = employee;
   }
@@ -83,7 +84,7 @@ void load_customer_db() {
   char line[1024];
   while (fgets(line, sizeof(line), fp) != NULL) {
     customer_t customer;
-    sscanf(line, "%d %d %s %s %d\n", &customer.id, &customer.type,
+    sscanf(line, "%d %d %s %s %d\n", &customer.id, (int *)&customer.type,
            customer.username, customer.password, &customer.active);
     customer_db[customer.id] = customer;
   }
@@ -202,6 +203,7 @@ int authenticate_employee(char *username, char *password) {
   return (i < 100) ? id : -1;
 }
 
+
 int authenticate_customer(char *username, char *password) {
   pthread_mutex_lock(&customer_db_mutex);
   int i, id;
@@ -234,6 +236,8 @@ int create_employee(char *username, char *password) {
   pthread_mutex_unlock(&employee_db_mutex);
   return id;
 }
+
+
 
 int create_customer(char *username, char *password) {
   pthread_mutex_lock(&customer_db_mutex);
@@ -328,6 +332,29 @@ void *handle_client_connection(void *args) {
     }
     send(connection->socket_fd, "Authenticated", sizeof("Authenticated"), 0);
   }
+  
+  if (ch - 1 == 1) {
+  if ((recv(connection->socket_fd, connection->user.username, sizeof(connection->user.username), 0)) < 0) {
+    perror("recv");
+  }
+  if ((recv(connection->socket_fd, connection->user.password, sizeof(connection->user.password), 0)) < 0) {
+    perror("recv");
+  }
+
+  int user_id = authenticate_employee(connection->user.username, connection->user.password);
+  if (user_id == -1) {
+    if ((send(connection->socket_fd, "Failed to authenticate", sizeof("Failed to authenticate"), 0)) < 0) {
+      perror("send");
+      close(connection->socket_fd);
+      exit(EXIT_FAILURE);
+    }
+  } else {
+    send(connection->socket_fd, "Authenticated", sizeof("Authenticated"), 0);
+    employee_menu(connection->socket_fd, user_id);
+  }
+}
+
+  
 }
 
 void main(void) {
@@ -351,6 +378,7 @@ void main(void) {
   load_employee_db();
   load_customer_db();
   load_account_db();
+  load_loan_db();
   while (1) {
     client_connection_t *client_connection =
         malloc(sizeof(client_connection_t));
