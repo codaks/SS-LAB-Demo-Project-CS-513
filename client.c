@@ -8,6 +8,89 @@
 #include <unistd.h>
 #define SERVER_PORT 8088
 
+void employee_menu(int client_socket) {
+    char buffer[4096];  
+    char choice[1];    
+
+    while (1) {
+        memset(buffer, 0, sizeof(buffer));
+        char *menu = "\nWelcome, Employee\n"
+                           "1. View Loan Applications (Under Process)\n"
+                           "2. View Loan Applications (Completed)\n"
+                           "3. Approve/Reject Loan Application\n"
+                           "4. Exit\n"
+                           "Enter your Choice: ";
+        printf("%s", menu);
+  	scanf("%s", choice);
+  	if (send(client_socket, choice, sizeof(choice), 0) < 0) {
+    		perror("send");
+    		exit(EXIT_FAILURE);
+  	}
+	if(atoi(choice) ==1 || atoi(choice) == 2){
+		int recv_size = recv(client_socket, buffer, sizeof(buffer), 0);
+		if (recv_size > 0) {
+		    printf("%s", buffer); 
+		} else {
+		    perror("Error receiving response from server");
+		    break;
+		}
+        }
+        else if(atoi(choice) == 3 ){
+        	char buffer_2[256], response[256], decision[1];
+        	int recv_1 = recv(client_socket, buffer, sizeof(buffer), 0);
+		if (recv_1 > 0) {
+		    printf("%s", buffer); 
+		    memset(buffer, 0, sizeof(buffer));
+		} else {
+		    perror("Error receiving response from server");
+		    break;
+		}
+		int recv_2 = recv(client_socket, response, sizeof(response), 0);
+		if (recv_2 > 0) {
+		    printf("%s", response); 
+		    memset(response, 0, sizeof(response));
+		} else {
+		    perror("Error receiving response from server");
+		    break;
+		}
+		scanf("%s", buffer_2);
+	  	if (send(client_socket, buffer_2, sizeof(buffer_2), 0) < 0) {
+	    		perror("send");
+	    		exit(EXIT_FAILURE);
+	  	}
+	  	int recv_3 = recv(client_socket, response, sizeof(response), 0);
+		if (recv_3 > 0) {
+		    printf("%s", response); 
+		    memset(response, 0, sizeof(response));
+		} else {
+		    perror("Error receiving response from server");
+		    break;
+		}
+		scanf("%s", decision);
+	  	if (send(client_socket, decision, sizeof(decision), 0) < 0) {
+	    		perror("send");
+	    		exit(EXIT_FAILURE);
+	  	}
+	  	int recv_4 = recv(client_socket, response, sizeof(response), 0);
+		if (recv_4 > 0) {
+		    printf("%s", response); 
+		    memset(response, 0, sizeof(response));
+		} else {
+		    perror("Error receiving response from server");
+		    break;
+		}
+		memset(decision, 0, sizeof(decision));
+		memset(buffer_2, 0, sizeof(buffer_2));
+        }
+        else if(atoi(choice) == 4) {
+            break;
+        }
+    }
+}
+
+
+
+
 void main(void) {
   struct termios old_settings, new_settings;
   tcgetattr(STDIN_FILENO, &old_settings);
@@ -102,4 +185,7 @@ void main(void) {
       exit(EXIT_SUCCESS);
     }
   }
+  else if (ch == 2) {
+        employee_menu(client_socket);
+    }
 }
